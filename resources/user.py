@@ -78,11 +78,47 @@ class UserLoginResource(Resource) :
 
     def post(self) :
 
+        data = request.get_json()
+
         try :
-            pass
+            connection = get_connection()
+            query = '''select *
+                        from user
+                        where email = %s;'''
+            record = (data['email'],)
+
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(query, record)
+
+            result_list = cursor.fetchall()
+
+            print(result_list)
+
+            cursor.close()
+            connection.close()
+
         except Error as e :
-            pass
-        return
+            print(e)
+            cursor.close()
+            connection.close()
+            return{"error":str(e)}, 500
+        
+
+        # 회원가입 시 정보가 없을 때
+        if len(result_list) == 0 :
+            return {'error':'회원가입을 하세요.'}, 400
+        
+        # email 있으면 password 확인
+        check = check_password(data['password'], result_list[0]['password']) 
+
+        # 비밀번호 안 맞으면
+        if check == False :
+            return{'error':'비밀번호가 일치하지 않습니다.'}, 406 #not access
+        
+        # JWT 생성하여 클라이언트에게 전달
+        access_token = create_access_token(result_list[0]['id'])
+
+        return{'result':'success','access_token':access_token}, 200
 
 
 
